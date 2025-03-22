@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>TCP Listener Application</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            margin: 0;
+        }
+        .controls {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .port-input {
+            width: 80px;
+            margin-right: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        tr {
+            cursor: pointer;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        .exit-button {
+            align-self: flex-end;
+            padding: 8px 16px;
+            background-color: #ff4444;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button {
+            padding: 8px 16px;
+            margin: 0 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        #stopButton {
+            background-color: #f44336;
+        }
+        
+        /* Context Menu Styles */
+        .context-menu {
+            position: fixed;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+            display: none;
+            z-index: 1000;
+        }
+        .context-menu-item {
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+        .context-menu-item:hover {
+            background-color: #f0f0f0;
+        }
+        
+        /* File Browser Dialog */
+        .file-browser-dialog {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+            z-index: 900;
+            width: 80%;
+            max-width: 800px;
+            height: 80vh;
+            display: none;
+            flex-direction: column;
+        }
+        .file-browser-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            flex-shrink: 0;
+        }
+        .path-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            flex-shrink: 0;
+        }
+        .current-path {
+            font-family: monospace;
+            padding: 5px;
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            flex-grow: 1;
+        }
+        .go-button {
+            padding: 5px 15px;
+        }
+        .file-list-container {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
+            margin-bottom: 10px;
+            border: 1px solid #eee;
+            border-radius: 4px;
+        }
+        .file-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+        }
+        .file-item:last-child {
+            border-bottom: none;
+        }
+        .file-item:hover {
+            background-color: #f5f5f5;
+        }
+        .file-item i {
+            margin-right: 10px;
+        }
+        .file-item .checkbox {
+            margin-right: 10px;
+            cursor: pointer;
+        }
+        .file-actions {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+            flex-shrink: 0;
+            background: white;
+        }
+        .action-button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+        }
+        .action-button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .action-button.delete {
+            background-color: #f44336;
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            z-index: 800;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <input type="number" id="portInput" class="port-input" value="8443">
+        <button id="startButton">Start Listening</button>
+        <button id="stopButton" disabled>Stop Listening</button>
+    </div>
+    
+    <table id="clientsTable">
+        <thead>
+            <tr>
+                <th>Hostname</th>
+                <th>Username</th>
+                <th>OS</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+
+    <button class="exit-button" id="exitButton">Exit</button>
+
+    <!-- Context Menu -->
+    <div class="context-menu" id="contextMenu">
+        <div class="context-menu-item" id="fileBrowserOption">File Browser</div>
+        <div class="context-menu-item" id="exitConnectionOption">Exit Connection</div>
+    </div>
+
+    <!-- File Browser Dialog -->
+    <div class="overlay" id="overlay"></div>
+    <div class="file-browser-dialog" id="fileBrowserDialog">
+        <div class="file-browser-header">
+            <h2>File Browser</h2>
+            <button id="closeBrowserButton">Close</button>
+        </div>
+        <div class="path-container">
+            <input type="text" class="current-path" id="currentPath">
+            <button class="go-button" id="goButton">Go</button>
+        </div>
+        <div class="file-list-container">
+            <div class="file-list" id="fileList"></div>
+        </div>
+        <div class="file-actions">
+            <button class="action-button" id="uploadButton">Upload File</button>
+            <button class="action-button" id="downloadButton">Download File</button>
+            <button class="action-button delete" id="deleteButton">Delete File</button>
+        </div>
+    </div>
+
+    <script src="./renderer.js"></script>
+</body>
+</html>
+
